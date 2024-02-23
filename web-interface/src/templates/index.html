@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title> Text Prompt to VST presets using CLAP Embeddings! </title>
+
+	<!-- CSS -->
+	<!-- TODO: Currently loading bootstrap, but damn I hate it. Will replace with bulma later -->
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+</head>
+
+<!-- Takes some input data in the form of a form, then sends to backend. Is updated by backend (app.py) -->
+<body>
+	<div>
+		<h2>Text to VST-i Parameters</h2>
+			<p>What is your text prompt?:</p>
+			<form action="{{url_for('predict')}}" method="post">
+				<input type="text" name="prompt" placeholder="Nada" required="required">
+				<br>
+				<button type="submit" class="btn btn-primary btn-block btn-large"> Get Preset!</button>
+			</form>
+			<br>
+			<br>	
+	    <b>{{prediction_text}}</b>
+	</div>
+</body>
+</html>
