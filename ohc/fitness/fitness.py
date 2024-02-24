@@ -93,22 +93,8 @@ class FitnessFunction:
             audios, self.target_embeddings
         )
 
-    def compute(self, batch: evotorch.SolutionBatch) -> torch.Tensor:
-        params = batch.values.detach().cpu().numpy()
-
-        audio_queue = Queue()
-
-        callback = partial(self._audio_ready_callback, audio_queue=audio_queue)
-        self.vsti_host.render(
-            params,
-            self.midi_note,
-            self.note_duration_in_seconds,
-            self.tail_duration_in_seconds,
-            callback,
-        )
-
+    def _consume_audio(self, audio_queue: Queue, items_total: int):
         items_processed = 0
-        items_total = len(batch)
 
         clap_batch = []
         outputs = []
@@ -139,6 +125,23 @@ class FitnessFunction:
                 f"{len(clap_batch)} items were not processed."
                 "We should *not* reach this point."
             )
+        return outputs
+
+    def compute(self, batch: evotorch.SolutionBatch) -> torch.Tensor:
+        params = batch.values.detach().cpu().numpy()
+
+        audio_queue = Queue()
+
+        callback = partial(self._audio_ready_callback, audio_queue=audio_queue)
+        self.vsti_host.render(
+            params,
+            self.midi_note,
+            self.note_duration_in_seconds,
+            self.tail_duration_in_seconds,
+            callback,
+        )
+
+        outputs = self._consume_audio(audio_queue, len(batch))
 
         indices, similarities = zip(*outputs)
         indices = torch.cat(indices, dim=0)
