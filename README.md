@@ -2,8 +2,6 @@
 
 Evolutionary search over VSTi synthesiser parameters using CLAP embeddings as a fitness function.
 
-<<<<<<< web-interface
-=======
 Root package is called `ohc`.
 
 ## Evolutionary Algorithm (Soumya)
@@ -92,4 +90,3 @@ Should allow:
 - visualisation of best output, output generation, (and algorithm history? i.e. intermediate results)
 
 Should use entry point defined in `ohc/run.py` (`from ohc import run`).
->>>>>>> main
