@@ -53,21 +53,33 @@ class VSTHostDawDreamer(VSTBase):
         self.engine = daw.RenderEngine(self.sample_rate, self.block_size)
         self.synth = self.engine.make_plugin_processor("synth", self.vst_path)
 
+        # Map from parameter names to parameter indices
+        self.params = self.synth.get_parameters_description()
+        self.param_map = {p["name"]: p["index"] for p in self.params}
+        self.active_params = []
+        self.active_indices = []
+
     def list_params(
         self,
-        filter_midicc: Optional[
-            bool
-        ] = True,  # Whether to filter out MIDI CC parameters
+        filter_midi_cc: Optional[bool] = True,
     ) -> List[str]:
         """
         Lists the parameter names of the VST plugin.
-        """
-        params = self.synth.get_parameters_description()
-        if filter_midicc:
-            params = [p for p in params if not p["name"].startswith("MIDI")]
 
-        param_names = [p["name"] for p in params]
+        Optionally filters out MIDI CC parameters which dawdreamer returns by default,
+        and there are ALOT of them.
+        """
+        param_names = [p["name"] for p in self.params]
+        if filter_midi_cc:
+            param_names = [p for p in param_names if not p.startswith("MIDI CC")]
         return param_names
+
+    def set_active_params(self, active_params: List[str]) -> None:
+        """
+        Sets the active parameters for rendering of the VST plugin.
+        """
+        self.active_params = active_params
+        self.active_indices = [self.param_map[p] for p in active_params]
 
     @ray.remote
     def _background_render(
@@ -125,11 +137,25 @@ class VSTHostDawDreamer(VSTBase):
         dispatching the background rendering process.
         """
 
-        # Merge the parameter settings with the inactive parameter settings
+        assert len(params.shape) == 2, "params must be (batch_size, num_params)"
+
+        if len(self.active_indices) == 0:
+            raise ValueError("No active parameters set. Use set_active_params()")
+
+        if params.shape[1] != len(self.active_indices):
+            raise ValueError(
+                "Number of parameters must match the active parameters "
+                "set by set_active_params()"
+            )
+
+        # Create a list of parameter settings keyed on their synthesizer preset
+        # index and the index they are passed within the batch
         synth_params = []
-        for i, p in enumerate(params):
-            param_dict = {j: p[j] for j in range(len(p))}
-            synth_params.append((param_dict, i))
+        for batch_idx, p in enumerate(params):
+            param_dict = {}
+            for idx, val in zip(self.active_indices, p):
+                param_dict[idx] = val
+            synth_params.append((param_dict, batch_idx))
 
         synth_args = {
             "sample_rate": self.sample_rate,

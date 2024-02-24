@@ -4,7 +4,6 @@ Classes for hosting VST plugins.
 from pathlib import Path
 from typing import List
 from typing import Literal
-from typing import Optional
 from typing import Union
 
 import numpy as np
@@ -47,14 +46,10 @@ class VSTBase:
         """
         raise NotImplementedError
 
-    def set_inactive_params(
-        self,
-        inactive_params: List[str],  # Names of parameters that should be inactive
-        param_values: Optional[List[float]],  # Optional values for inactive params
-    ) -> None:
+    def set_active_params(active_params: List[str]) -> None:
         """
         Abstract method that must be implemented by the subclass.
-        Sets the inactive parameters of the VST plugin.
+        Sets the active parameters for rendering of the VST plugin.
         """
         raise NotImplementedError
 
