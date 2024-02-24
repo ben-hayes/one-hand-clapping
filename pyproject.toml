@@ -19,3 +19,12 @@ dependencies = [
   "ray==2.9.3",
   "transformers>=4.0.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "flake8",
+    "pytest",
+    "pre-commit",
+    "pytest-cov",
+]
