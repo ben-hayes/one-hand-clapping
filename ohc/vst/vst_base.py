@@ -20,16 +20,20 @@ class VSTBase:
         self,
         vst_path: Union[str, Path],  # Path to the VST plugin
         inactive_param_behaviour: Literal["random", "fixed"],
+        sample_rate: int,  # Sample rate for the VST plugin,
+        **kwargs,  # Additional keyword arguments for to be passed to init
     ) -> None:
         """
         Constructor for the VSTBase class.
         """
-        self._initiate_synth(vst_path, inactive_param_behaviour)
+        self._initiate_synth(vst_path, inactive_param_behaviour, sample_rate, **kwargs)
 
     def _initiate_synth(
         self,
         vst_path: Union[str, Path],
         inactive_param_behaviour: Literal["random", "fixed"],
+        sample_rate: int,
+        **kwargs,  # Additional keyword arguments for to be passed to initialization
     ) -> None:
         """
         Abstract method that must be implemented by the subclass.
