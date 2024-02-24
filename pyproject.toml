@@ -25,4 +25,5 @@ dev = [
     "pytest",
     "pre-commit",
     "pytest-cov",
+    "python-dotenv",
 ]

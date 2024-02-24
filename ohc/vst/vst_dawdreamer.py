@@ -26,6 +26,7 @@ class VSTHostDawDreamer(VSTBase):
         inactive_param_behaviour: str,
         sample_rate: int,
         block_size: int,
+        num_cpus: Optional[int] = None,
     ) -> None:
         """
         Constructor for the VSTHostDawDreamer class.
@@ -33,6 +34,10 @@ class VSTHostDawDreamer(VSTBase):
         super().__init__(
             vst_path, inactive_param_behaviour, sample_rate, block_size=block_size
         )
+
+        # Initialise ray if not already initialised
+        if not ray.is_initialized():
+            ray.init(num_cpus=num_cpus)
 
     def _initiate_synth(
         self,
@@ -80,43 +85,6 @@ class VSTHostDawDreamer(VSTBase):
         """
         self.active_params = active_params
         self.active_indices = [self.param_map[p] for p in active_params]
-
-    @ray.remote
-    def _background_render(
-        params: Dict[int, float],
-        batch_idx: int,
-        sample_rate: int,
-        block_size: int,
-        vst_path: str,
-        midi_note: int,
-        velocity: int,
-        note_duration_in_seconds: float,
-        tail_duration_in_seconds: float,
-    ):
-        """
-        Background rendering function
-        """
-        # Initialise the render engine and synth
-        engine = daw.RenderEngine(sample_rate, block_size)
-        synth = engine.make_plugin_processor("synth", vst_path)
-
-        engine.load_graph(
-            [
-                (synth, []),
-            ]
-        )
-
-        synth.add_midi_note(midi_note, velocity, 0.0, note_duration_in_seconds)
-
-        # Set the parameter values
-        for idx, value in params.items():
-            synth.set_parameter(idx, value)
-
-        # Render the audio
-        engine.render(note_duration_in_seconds + tail_duration_in_seconds)
-        audio = engine.get_audio()
-
-        return audio, batch_idx
 
     def render(
         self,
@@ -168,7 +136,43 @@ class VSTHostDawDreamer(VSTBase):
         }
 
         # Render the audio for each parameter setting using ray remote
-        remotes = [
-            self._background_render.remote(*p, **synth_args) for p in synth_params
-        ]
+        remotes = [_background_render.remote(*p, **synth_args) for p in synth_params]
         return remotes
+
+
+@ray.remote
+def _background_render(
+    params: Dict[int, float],
+    batch_idx: int,
+    sample_rate: int,
+    block_size: int,
+    vst_path: str,
+    midi_note: int,
+    velocity: int,
+    note_duration_in_seconds: float,
+    tail_duration_in_seconds: float,
+):
+    """
+    Background rendering function for the VST plugin.
+    """
+    # Initialise the render engine and synth
+    engine = daw.RenderEngine(sample_rate, block_size)
+    synth = engine.make_plugin_processor("synth", vst_path)
+
+    engine.load_graph(
+        [
+            (synth, []),
+        ]
+    )
+
+    synth.add_midi_note(midi_note, velocity, 0.0, note_duration_in_seconds)
+
+    # Set the parameter values
+    for idx, value in params.items():
+        synth.set_parameter(idx, value)
+
+    # Render the audio
+    engine.render(note_duration_in_seconds + tail_duration_in_seconds)
+    audio = engine.get_audio()
+
+    return audio, batch_idx
