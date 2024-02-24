@@ -4,6 +4,7 @@ from typing import Optional, List, Tuple, Union
 
 import evotorch
 import numpy as np
+import ray
 import torch
 
 from .clap import CLAPSimilarity
@@ -82,9 +83,8 @@ class FitnessFunction:
         self, clap_batch: List[Tuple[int, np.ndarray]]
     ) -> torch.Tensor:
         print(f"Processing batch of {len(clap_batch)} audio clips")
-        indices, audios = zip(*clap_batch)
-
-        indices = torch.tensor(list(indices), dtype=torch.long)
+        audios, indices = zip(*clap_batch)
+        indices = torch.tensor(indices, dtype=torch.long)
         audios = np.stack(audios, axis=0)
         audios = torch.from_numpy(audios).float()
         audios = audios.to(self.clap_similarity.device)
@@ -93,32 +93,32 @@ class FitnessFunction:
             audios, self.target_embeddings
         )
 
-    def _consume_audio(self, audio_queue: Queue, items_total: int):
+    def _consume_audio(self, ray_objects: List[ray.ObjectRef], items_total: int):
         items_processed = 0
 
         clap_batch = []
         outputs = []
 
         while items_processed < items_total:
-            item = audio_queue.get(
-                block=True,
-                timeout=self.queue_timeout,
-            )
+            ready_objects, ray_objects = ray.wait(ray_objects, num_returns=1)
 
-            clap_batch.append(item)
+            for ready_object in ready_objects:
+                item = ray.get(ready_object)
 
-            items_remaining = items_total - items_processed
-            clap_threshold = (
-                self.clap_batch_size
-                if items_remaining > self.clap_batch_size
-                else items_remaining
-            )
+                clap_batch.append(item)
 
-            if len(clap_batch) >= clap_threshold:
-                outputs.append(self._process_clap_batch(clap_batch))
-                items_processed += len(clap_batch)
+                items_remaining = items_total - items_processed
+                clap_threshold = (
+                    self.clap_batch_size
+                    if items_remaining > self.clap_batch_size
+                    else items_remaining
+                )
 
-                clap_batch = []
+                if len(clap_batch) >= clap_threshold:
+                    outputs.append(self._process_clap_batch(clap_batch))
+                    items_processed += len(clap_batch)
+
+                    clap_batch = []
 
         if len(clap_batch) > 0:
             raise RuntimeError(
@@ -130,18 +130,14 @@ class FitnessFunction:
     def compute(self, batch: evotorch.SolutionBatch) -> torch.Tensor:
         params = batch.values.detach().cpu().numpy()
 
-        audio_queue = Queue()
-
-        callback = partial(self._audio_ready_callback, audio_queue=audio_queue)
-        self.vsti_host.render(
+        ray_waitables = self.vsti_host.render(
             params,
             self.midi_note,
             self.note_duration_in_seconds,
             self.tail_duration_in_seconds,
-            callback,
         )
 
-        outputs = self._consume_audio(audio_queue, len(batch))
+        outputs = self._consume_audio(ray_waitables, len(batch))
 
         indices, similarities = zip(*outputs)
         indices = torch.cat(indices, dim=0)
@@ -151,20 +147,19 @@ class FitnessFunction:
 
 
 if __name__ == "__main__":
-    import threading
     import random
     import time
 
     class FakeVstiHost:
-        def render(self, params, midi_note, note_duration, tail_duration, callback):
-            def render_thread():
-                for i in range(len(batch)):
-                    sleep_time = random.uniform(0.1, 0.5)
-                    time.sleep(sleep_time)
-                    print(f"Callback {i} after {sleep_time} seconds")
-                    callback(torch.rand(3), i)
+        def render(self, params, midi_note, note_duration, tail_duration):
+            @ray.remote
+            def render_thread(i):
+                sleep_time = random.uniform(0.1, 0.5)
+                time.sleep(sleep_time)
+                print(f"Callback {i} after {sleep_time} seconds")
+                return torch.rand(1, 3), i
 
-            threading.Thread(target=render_thread).start()
+            return [render_thread.remote(i) for i in range(params.shape[0])]
 
     class FakeCLAPSimilarity:
         device = torch.device("cpu")
@@ -173,6 +168,9 @@ if __name__ == "__main__":
             return torch.rand(len(text), 3)
 
         def get_audio_embedding(self, audio: torch.Tensor) -> torch.Tensor:
+            sleep_time = random.uniform(0.01, 0.1)
+            time.sleep(sleep_time)
+            print(f"CLAP audio after {sleep_time} seconds")
             return torch.rand(len(audio), 3)
 
         def compute_similarity(
