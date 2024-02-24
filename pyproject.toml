@@ -15,6 +15,7 @@ dependencies = [
   "evotorch==0.5.1",
   "ray==2.9.3",
   "transformers>=4.0.0",
+  "dawdreamer>=0.8.0",
 ]
 
 [project.optional-dependencies]

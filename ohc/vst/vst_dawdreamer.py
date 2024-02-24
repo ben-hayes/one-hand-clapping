@@ -45,4 +45,5 @@ class VSTHostDawDreamer(VSTBase):
         self.block_size = block_size
 
         # Initialise the render engine
-        engine = daw.RenderEngine(self.sample_rate, self.block_size)  # noqa
+        self.engine = daw.RenderEngine(self.sample_rate, self.block_size)
+        self.synth = self.engine.make_plugin_processor("synth", self.vst_path)
