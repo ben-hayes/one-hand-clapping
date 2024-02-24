@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ohc"
+version = "0.0.4"
+description = "What is the sound of one hand CLAPping?"
+authors = [
+  { name = "Ben Hayes", email = "ben@benhayes.net" } 
+]
+readme = "README.md"
+
