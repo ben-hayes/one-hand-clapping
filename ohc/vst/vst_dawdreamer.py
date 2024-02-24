@@ -136,7 +136,7 @@ class VSTHostDawDreamer(VSTBase):
             "block_size": self.block_size,
             "vst_path": self.vst_path,
             "midi_note": midi_note,
-            "velocity": 127,  # Default velocity of 127
+            "velocity": 127,  # Default velocity of 127 \m/ \m/
             "note_duration_in_seconds": note_duration_in_seconds,
             "tail_duration_in_seconds": tail_duration_in_seconds,
         }
