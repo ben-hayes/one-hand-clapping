@@ -42,11 +42,11 @@ VstiHost.set_active_params(
     active_params: List[str]
 )
 VstiHost.render(
-    params: evotorch.SolutionBatch,
+    params: np.ndarray,
     midi_note: int,
     note_duration_in_seconds: float,
     tail_duration_in_seconds: float,
-    callback: Callable[Union[torch.Tensor, np.ndarray], int]  # callback(audio, index_in_batch) -- should be called for each batch item as soon as the output is ready.
+    callback: Callable[np.ndarray, int]  # callback(audio, index_in_batch) -- should be called for each batch item as soon as the output is ready.
 )
 ```
 
