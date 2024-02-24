@@ -103,9 +103,9 @@ class FitnessFunction:
             ready_objects, ray_objects = ray.wait(ray_objects, num_returns=1)
 
             for ready_object in ready_objects:
-                item = ray.get(ready_object)
-
-                clap_batch.append(item)
+                audio, idx = ray.get(ready_object)
+                audio = np.mean(audio, axis=0)
+                clap_batch.append((audio, idx))
 
                 items_remaining = items_total - items_processed
                 clap_threshold = (
@@ -157,7 +157,7 @@ if __name__ == "__main__":
                 sleep_time = random.uniform(0.1, 0.5)
                 time.sleep(sleep_time)
                 print(f"Callback {i} after {sleep_time} seconds")
-                return torch.rand(1, 3), i
+                return np.random.uniform(0, 1, (2, 3)), i
 
             return [render_thread.remote(i) for i in range(params.shape[0])]
 
