@@ -2,7 +2,9 @@
 VST Host implementation using DawDreamer.
 """
 from pathlib import Path
+from typing import List
 from typing import Literal
+from typing import Optional
 from typing import Union
 
 import dawdreamer as daw
@@ -47,3 +49,19 @@ class VSTHostDawDreamer(VSTBase):
         # Initialise the render engine
         self.engine = daw.RenderEngine(self.sample_rate, self.block_size)
         self.synth = self.engine.make_plugin_processor("synth", self.vst_path)
+
+    def list_params(
+        self,
+        filter_midicc: Optional[
+            bool
+        ] = True,  # Whether to filter out MIDI CC parameters
+    ) -> List[str]:
+        """
+        Lists the parameter names of the VST plugin.
+        """
+        params = self.synth.get_parameters_description()
+        if filter_midicc:
+            params = [p for p in params if not p["name"].startswith("MIDI")]
+
+        param_names = [p["name"] for p in params]
+        return param_names
