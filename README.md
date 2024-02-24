@@ -2,7 +2,12 @@
 
 Evolutionary search over VSTi synthesiser parameters using CLAP embeddings as a fitness function.
 
+Root package is called `ohc`. 
+
 ## Evolutionary Algorithm (Soumya)
+
+Directory: `ohc/search`
+Import path: `from ohc.search import ...`
 
 Should provide a wrapper around `evotorch` that allows us to pass in configurations and call `run`. Ideally would implement some audio metrics (FAD? Quality Diversity?) that allow us to get a sense of what's working well.
 
@@ -22,6 +27,9 @@ EvolutionarySearch.run(
 ```
 
 ## VSTi Host (Jordie)
+
+Directory: `ohc/vst`
+Import path: `from ohc.vst import ...`
 
 VST host should be able to render audio given a parameter vector, as well as translate to/from parameter vectors. It should expose a list of parameters and allow active parameters to be set.
 
@@ -50,6 +58,9 @@ VstiHost.render(
 ```
 
 ## Fitness Function (Ben)
+
+Directory: `ohc/fitness`
+Import path: `from ohc.fitness import ...`
 
 ```python
 FitnessFunction.__init__(
@@ -84,3 +95,5 @@ Should allow:
 * listing / selection of parameters
 * input of text / Audio prompt
 * visualisation of best output, output generation, (and algorithm history? i.e. intermediate results)
+
+Should use entry point defined in `ohc/run.py` (`from ohc import run`). 

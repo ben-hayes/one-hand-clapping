@@ -10,4 +10,9 @@ authors = [
   { name = "Ben Hayes", email = "ben@benhayes.net" } 
 ]
 readme = "README.md"
-
+dependencies = [
+  "torch>=2.0.0",
+  "evotorch==0.5.1",
+  "ray==2.9.3",
+  "transformers>=4.0.0",
+]
