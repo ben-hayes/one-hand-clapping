@@ -2,7 +2,6 @@
 Classes for hosting VST plugins.
 """
 from pathlib import Path
-from typing import Callable
 from typing import List
 from typing import Literal
 from typing import Optional
@@ -65,7 +64,6 @@ class VSTBase:
         midi_note: int,  # Midi note number to play
         note_duration_in_seconds: float,  # Duration of the note in seconds
         tail_duration_in_seconds: float,  # Duration of the tail to render after note
-        callback: Callable[[np.ndarray, int], None],  # Callback
     ) -> None:
         """
         Abstract method that must be implemented by the subclass.
