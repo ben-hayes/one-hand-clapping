@@ -8,12 +8,13 @@ import ray
 import torch
 
 from .clap import CLAPSimilarity
+from ..vst.vst_base import VSTBase
 
 
 class FitnessFunction:
-    vsti_host: "VstiHost"
+    vsti_host: VSTBase
     clap_similarity: CLAPSimilarity
-    text_target: Optional[List[str]] = None
+    text_targets: Optional[List[str]] = None
     audio_targets: Optional[torch.Tensor] = None
 
     text_target_embeddings: Optional[torch.Tensor] = None
@@ -21,9 +22,9 @@ class FitnessFunction:
 
     def __init__(
         self,
-        vsti_host: "VstiHost",
+        vsti_host: VSTBase,
         clap_similarity: CLAPSimilarity,
-        text_target: Optional[List[str]] = None,
+        text_targets: Optional[List[str]] = None,
         audio_targets: Optional[torch.Tensor] = None,
         clap_batch_size: int = 32,
         midi_note: int = 48,
@@ -34,10 +35,10 @@ class FitnessFunction:
         self.vsti_host = vsti_host
         self.clap_similarity = clap_similarity
 
-        self.text_target = text_target
+        self.text_targets = text_targets
         self.audio_targets = audio_targets
 
-        if text_target is None and audio_targets is None:
+        if text_targets is None and audio_targets is None:
             raise ValueError(
                 "At least one of text_target or audio_targets must be provided"
             )
@@ -51,9 +52,9 @@ class FitnessFunction:
 
     @property
     def target_embeddings(self) -> torch.Tensor:
-        if self.text_target_embeddings is None and self.text_target is not None:
+        if self.text_target_embeddings is None and self.text_targets is not None:
             self.text_target_embeddings = self.clap_similarity.get_text_embedding(
-                self.text_target
+                self.text_targets
             )
 
         if self.audio_target_embeddings is None and self.audio_targets is not None:
@@ -191,7 +192,7 @@ if __name__ == "__main__":
     fitness = FitnessFunction(
         FakeVstiHost(),
         FakeCLAPSimilarity(),
-        text_target=["hello", "world"],
+        text_targets=["hello", "world"],
         clap_batch_size=5,
     )
 
