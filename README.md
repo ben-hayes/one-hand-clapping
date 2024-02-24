@@ -2,7 +2,7 @@
 
 Evolutionary search over VSTi synthesiser parameters using CLAP embeddings as a fitness function.
 
-Root package is called `ohc`. 
+Root package is called `ohc`.
 
 ## Evolutionary Algorithm (Soumya)
 
@@ -14,7 +14,6 @@ Should provide a wrapper around `evotorch` that allows us to pass in configurati
 Creates a population of candidate patches and passes them to the `FitnessFunction`.
 
 Should allow us to easily configure (try out different algorithms and parameters).
-
 
 ```python
 EvolutionarySearch.__init__(
@@ -42,19 +41,13 @@ VstiHost.list_params() -> List[str]
 VstiHost.set_active_params(
     active_params: List[str]
 )
-VstiHost.params_to_solution(
-    params: dict[str, Any],
-) -> torch.Tensor
-VstiHost.solution_to_params(
-    solution: evotorch.Solution
-) -> dict[str, Any]
 VstiHost.render(
-    params: Union[dict[str, Any], evotorch.Solution]  # (input type as you see fit!)
-    individual_idx: int,
+    params: evotorch.SolutionBatch,
     midi_note: int,
     note_duration_in_seconds: float,
     tail_duration_in_seconds: float,
-) -> torch.Tensor  # audio output (2, T)
+    callback: Callable[Union[torch.Tensor, np.ndarray], int]  # callback(audio, index_in_batch) -- should be called for each batch item as soon as the output is ready.
+)
 ```
 
 ## Fitness Function (Ben)
@@ -91,9 +84,9 @@ CLAPSimilarity.get_audio_embedding(
 
 Should allow:
 
-* upload / selection of VSTi
-* listing / selection of parameters
-* input of text / Audio prompt
-* visualisation of best output, output generation, (and algorithm history? i.e. intermediate results)
+- upload / selection of VSTi
+- listing / selection of parameters
+- input of text / Audio prompt
+- visualisation of best output, output generation, (and algorithm history? i.e. intermediate results)
 
-Should use entry point defined in `ohc/run.py` (`from ohc import run`). 
+Should use entry point defined in `ohc/run.py` (`from ohc import run`).
