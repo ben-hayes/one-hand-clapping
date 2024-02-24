@@ -8,8 +8,8 @@ version = "0.0.4"
 description = "What is the sound of one hand CLAPping?"
 authors = [
   { name = "Jordie Shier" },
-  { name = "Soumya Sai Vanka"}
-  { name = "Ashley Noel-Hirst"}
+  { name = "Soumya Sai Vanka"},
+  { name = "Ashley Noel-Hirst"},
   { name = "Ben Hayes" } 
 ]
 readme = "README.md"
