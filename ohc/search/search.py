@@ -158,7 +158,7 @@ class EvolutionarySearch:
         elif searcher == "GeneticAlgorithm":
             # make sure need_bounds is set to True in Problem class
             crossover = (
-                op.OnePointCrossover(
+                op.OnePointCrossOver(
                     self._problem,
                     tournament_size=8,
                 )
