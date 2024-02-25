@@ -1,6 +1,6 @@
 # The Sound of One Hand CLAPping
 
-Evolutionary search over VSTi synthesiser parameters using CLAP embeddings as a fitness function.
+Evolutionary search over VSTi synthesiser parameters using CLAP embeddings as a fitness function. Inspired by [CTAG](https://ctag.media.mit.edu/)
 
 Root package is called `ohc`.
 
