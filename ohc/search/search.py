@@ -103,8 +103,11 @@ class FindMySound(evotorch.Problem):
     def _evaluate_batch(self, solutions: evotorch.SolutionBatch):
         
         batched_solutions = solutions.values.split(self._batch_size)
+  
+        
         batched_fitness = []
         for batch in batched_solutions:
+            
             fitness = self.fitness_function(batch)
             batched_fitness.append(fitness)
         fitness = torch.cat(batched_fitness)
@@ -188,13 +191,13 @@ if __name__ == "__main__":
 
 
     search = EvolutionarySearch(problem = problem, 
-                                logger = "custom",
+                                logger = "StdOutLogger",
                                 searcher = "SNES",
                                 population_size = 100,
                                 max_generations = 100,
                                 initial_solution_path = None,
                                 batch_size = 2,
-                                stdev_init = 0.5,
+                                stdev_init = 0.1,
                                )
     search.forward()
      
