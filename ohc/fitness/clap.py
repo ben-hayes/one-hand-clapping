@@ -93,8 +93,9 @@ class CLAPSimilarity:
             truncation=True,
             return_tensors="pt",
         )
+        features = {k: v.to(self.device) for k, v in features.items()}
 
-        return self.model.get_text_features(**features).to(self.device)
+        return self.model.get_text_features(**features)
 
     def _preprocess_audio(self, audio: np.ndarray) -> np.ndarray:
         audio = torch.from_numpy(audio).to(self.device, dtype=torch.float32)
