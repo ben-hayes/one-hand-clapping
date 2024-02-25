@@ -37,7 +37,7 @@ class VSTHostDawDreamer(VSTBase):
 
         # Initialise ray if not already initialised
         if not ray.is_initialized():
-            ray.init(num_cpus=num_cpus)
+            ray.init(num_cpus=num_cpus, log_to_driver=False)
 
     def _initiate_synth(
         self,
@@ -122,7 +122,7 @@ class VSTHostDawDreamer(VSTBase):
         for batch_idx, p in enumerate(params):
             param_dict = {}
             for idx, val in zip(self.active_indices, p):
-                param_dict[idx] = val
+                param_dict[idx] = np.clip(val, 0.0, 1.0)
             synth_params.append((param_dict, batch_idx))
 
         synth_args = {
@@ -138,6 +138,28 @@ class VSTHostDawDreamer(VSTBase):
         # Render the audio for each parameter setting using ray remote
         remotes = [_background_render.remote(*p, **synth_args) for p in synth_params]
         return remotes
+
+    def render_now(
+        self,
+        params: np.ndarray,  # A batch of parameter settings
+        midi_note: int,  # Midi note number to play
+        note_duration_in_seconds: float,  # Duration of the note in seconds
+        tail_duration_in_seconds: float,  # Duration of the tail to render after note
+    ) -> List[np.ndarray]:
+        """
+        Renders the VST plugin.
+
+        Receives a batch of parameter settings and renders audio for each setting
+        as a blocking process. Returns the rendered audio signals.
+        """
+
+        remotes = self.render(
+            params,
+            midi_note,
+            note_duration_in_seconds,
+            tail_duration_in_seconds,
+        )
+        return ray.get(remotes)
 
 
 @ray.remote

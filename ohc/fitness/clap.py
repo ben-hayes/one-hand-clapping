@@ -2,7 +2,9 @@ from typing import List
 
 import numpy as np
 import torch
-from transformers import ClapModel, AutoTokenizer, AutoFeatureExtractor
+from transformers import AutoFeatureExtractor
+from transformers import AutoTokenizer
+from transformers import ClapModel
 
 
 class CLAPSimilarity:
@@ -23,6 +25,7 @@ class CLAPSimilarity:
     def _init_model(self, model_name: str, device: str):
         print(f"Initializing CLAP model: {model_name}")
         self.model = ClapModel.from_pretrained(model_name).to(device)
+        self.model.eval()
 
         print(f"Initializing CLAP tokenizer: {model_name}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -37,7 +40,7 @@ class CLAPSimilarity:
             truncation=True,
             return_tensors="pt",
         )
-
+        features = {k: v.to(self.device) for k, v in features.items()}
         return self.model.get_text_features(**features)
 
     def _preprocess_audio(self, audio: np.ndarray) -> np.ndarray:
@@ -54,15 +57,19 @@ class CLAPSimilarity:
 
     def get_audio_embedding(self, audio: np.ndarray) -> torch.Tensor:
         audio_features = self._preprocess_audio(audio)
+        audio_features = {k: v.to(self.device) for k, v in audio_features.items()}
         return self.model.get_audio_features(**audio_features)
 
     def compute_similarity(
         self, audio: np.ndarray, target_embeddings: torch.Tensor
     ) -> torch.Tensor:
-        audio_embeddings = self.get_audio_embedding(audio)
-        if target_embeddings.device != audio_embeddings.device:
-            target_embeddings = target_embeddings.to(audio_embeddings.device)
-        return cosine_similarity_matrix(audio_embeddings, target_embeddings)
+        with torch.no_grad():
+            audio_embeddings = self.get_audio_embedding(audio)
+            if target_embeddings.device != audio_embeddings.device:
+                target_embeddings = target_embeddings.to(audio_embeddings.device)
+
+        similarity = cosine_similarity_matrix(audio_embeddings, target_embeddings)
+        return similarity
 
 
 def cosine_similarity_matrix(a, b):
