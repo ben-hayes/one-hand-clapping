@@ -1,11 +1,11 @@
 import time
+from typing import Literal
 
 import evotorch
-import matplotlib
 import matplotlib.pyplot as plt
 import torch
 from evotorch.logging import Logger
-from evotorch.operators import TwoPointCrossOver, PolynomialMutation
+import evotorch.operators as op
 
 # import wandb
 
@@ -92,7 +92,7 @@ class FindMySound(evotorch.Problem):
                 objective_sense=objective_sense,
                 solution_length=num_params,
                 initial_bounds=(min_value, max_value),
-                bounds = (min_value, max_value),
+                bounds=(min_value, max_value),
                 device=device,
             )
         else:
@@ -126,6 +126,15 @@ class EvolutionarySearch:
         population_size: int = 10,
         max_generations: int = 10,
         stdev_init: float = 1.0,
+        crossover: Literal["one_point", "two_point", "sbx"] = "one_point",
+        mutation: Literal[
+            "gaussian_sparse_narrow",
+            "gaussian_sparse_wide",
+            "gaussian_dense_narrow",
+            "gaussian_dense_wide",
+            "polynomial_sparse",
+            "polynomial_dense",
+        ] = "gaussian",
     ):
         """
         Args:
@@ -147,16 +156,43 @@ class EvolutionarySearch:
                 self._problem, stdev_init=stdev_init, popsize=population_size
             )
         elif searcher == "GeneticAlgorithm":
-            #make sure need_bounds is set to True in Problem class
+            # make sure need_bounds is set to True in Problem class
+            crossover = (
+                op.OnePointCrossover(
+                    self._problem,
+                    tournament_size=8,
+                )
+                if crossover == "one_point"
+                else (
+                    op.TwoPointCrossOver(self._problem, tournament_size=8)
+                    if crossover == "two_point"
+                    else op.SimulatedBinaryCrossOver(
+                        self._problem, tournament_size=8, eta=10.0
+                    )
+                )
+            )
+
+            mutation = (
+                op.GaussianMutation(
+                    self._problem,
+                    stdev=0.1 if "narrow" in mutation else 1.0,
+                    mutation_probability=0.1 if "sparse" in mutation else 0.9,
+                )
+                if "gaussian" in mutation
+                else op.PolynomialMutation(
+                    self._problem,
+                    mutation_probability=0.1 if "sparse" in mutation else 0.9,
+                )
+            )
             self._searcher = evotorch.algorithms.GeneticAlgorithm(
-                                                                    self._problem,
-                                                                    popsize=population_size,
-                                                                    operators=[
-                                                                        TwoPointCrossOver(self._problem, tournament_size=4),
-                                                                        PolynomialMutation(self._problem),
-                                                                    ],
-                                                                    re_evaluate=False,
-                                                                )
+                self._problem,
+                popsize=population_size,
+                operators=[
+                    crossover,
+                    mutation,
+                ],
+                re_evaluate=False,
+            )
         else:
             raise NotImplementedError("Searcher not recognised")
 
@@ -169,7 +205,7 @@ class EvolutionarySearch:
             self._logger = MetricsLivePlotter(
                 self._searcher, "best_eval", max_generations
             )
-           
+
         else:
             raise NotImplementedError("Logger not recognised")
 
@@ -181,8 +217,5 @@ class EvolutionarySearch:
         #     print(status)
         #     population = self._searcher._population.access_values(keep_evals=True)
         #     print(population)
-
-
-
 
     # print("Search complete")
