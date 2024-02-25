@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import torch
 from evotorch.logging import Logger
+from evotorch.operators import TwoPointCrossOver, PolynomialMutation
 
 # import wandb
 
@@ -71,6 +72,7 @@ class FindMySound(evotorch.Problem):
         min_value: float,
         max_value: float,
         fitness_function: torch.nn.Module,
+        need_bounds: bool = False,
         device: str = "cpu",
     ):
         """
@@ -85,12 +87,21 @@ class FindMySound(evotorch.Problem):
                 optimisation
             batch_size (int): The batch size for the fitness function
         """
-        super().__init__(
-            objective_sense=objective_sense,
-            solution_length=num_params,
-            initial_bounds=(min_value, max_value),
-            device=device,
-        )
+        if need_bounds:
+            super().__init__(
+                objective_sense=objective_sense,
+                solution_length=num_params,
+                initial_bounds=(min_value, max_value),
+                bounds = (min_value, max_value),
+                device=device,
+            )
+        else:
+            super().__init__(
+                objective_sense=objective_sense,
+                solution_length=num_params,
+                initial_bounds=(min_value, max_value),
+                device=device,
+            )
         self.fitness_fn = fitness_function
 
     def fitness_function(self, params_tensor: torch.Tensor):
@@ -135,23 +146,32 @@ class EvolutionarySearch:
             self._searcher = evotorch.algorithms.SNES(
                 self._problem, stdev_init=stdev_init, popsize=population_size
             )
+        elif searcher == "GeneticAlgorithm":
+            #make sure need_bounds is set to True in Problem class
+            self._searcher = evotorch.algorithms.GeneticAlgorithm(
+                                                                    self._problem,
+                                                                    popsize=population_size,
+                                                                    operators=[
+                                                                        TwoPointCrossOver(self._problem, tournament_size=4),
+                                                                        PolynomialMutation(self._problem),
+                                                                    ],
+                                                                    re_evaluate=False,
+                                                                )
+        else:
+            raise NotImplementedError("Searcher not recognised")
 
         # self._population_size = population_size
         self._max_generations = max_generations
 
         if logger == "StdOutLogger":
             self._logger = evotorch.logging.StdOutLogger(self._searcher)
-        elif logger == "WandbLogger":
-            self._logger = evotorch.logging.WandbLogger(
-                self._searcher, project="one-hand-clapping", entity="ohc"
-            )
-        elif logger == "custom":
+        elif logger == "Custom":
             self._logger = MetricsLivePlotter(
                 self._searcher, "best_eval", max_generations
             )
-            # self._logger = PopulationLivePlotter(self._searcher)
+           
         else:
-            raise ValueError("Logger not recognised")
+            raise NotImplementedError("Logger not recognised")
 
     def run(self):
         self._searcher.run(self._max_generations)
