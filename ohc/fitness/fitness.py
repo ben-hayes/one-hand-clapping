@@ -1,17 +1,21 @@
-from functools import partial
 from queue import Queue
-from typing import Optional, List, Tuple, Union
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import evotorch
 import numpy as np
 import ray
 import torch
+from evotorch.decorators import vectorized
 
+from ..vst import VSTHost
 from .clap import CLAPSimilarity
 
 
 class FitnessFunction:
-    vsti_host: "VstiHost"
+    vsti_host: VSTHost
     clap_similarity: CLAPSimilarity
     text_target: Optional[List[str]] = None
     audio_targets: Optional[torch.Tensor] = None
@@ -21,7 +25,7 @@ class FitnessFunction:
 
     def __init__(
         self,
-        vsti_host: "VstiHost",
+        vsti_host: VSTHost,
         clap_similarity: CLAPSimilarity,
         text_target: Optional[List[str]] = None,
         audio_targets: Optional[torch.Tensor] = None,
@@ -83,11 +87,10 @@ class FitnessFunction:
         self, clap_batch: List[Tuple[int, np.ndarray]]
     ) -> torch.Tensor:
         print(f"Processing batch of {len(clap_batch)} audio clips")
+
         audios, indices = zip(*clap_batch)
         indices = torch.tensor(indices, dtype=torch.long)
         audios = np.stack(audios, axis=0)
-        audios = torch.from_numpy(audios).float()
-        audios = audios.to(self.clap_similarity.device)
 
         return indices, self.clap_similarity.compute_similarity(
             audios, self.target_embeddings
@@ -127,9 +130,14 @@ class FitnessFunction:
             )
         return outputs
 
+    @vectorized
     def compute(self, batch: evotorch.SolutionBatch) -> torch.Tensor:
-        params = batch.values.detach().cpu().numpy()
+        if batch.ndim == 1:
+            batch = batch.unsqueeze(0)
+        elif batch.ndim != 2:
+            raise ValueError("Batch must be 2D tensor")
 
+        params = batch.detach().cpu().numpy()
         ray_waitables = self.vsti_host.render(
             params,
             self.midi_note,
@@ -142,8 +150,10 @@ class FitnessFunction:
         indices, similarities = zip(*outputs)
         indices = torch.cat(indices, dim=0)
         similarities = torch.cat(similarities, dim=0)
-
-        return similarities[indices.argsort()]
+        similarities = similarities[indices.argsort()]
+        # similarities = torch.split(similarities, 1, dim=1)
+        # similarities = (s.squeeze(1) for s in similarities)
+        return similarities
 
 
 if __name__ == "__main__":
