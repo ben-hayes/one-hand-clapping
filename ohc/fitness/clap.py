@@ -20,6 +20,7 @@ class ParallelClapFeatureExtractor:
         power: float = 2.0,
         window_fn: Callable = torch.hann_window,
         norm: str = "slaney",
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         self.transform = MelSpectrogram(
             sample_rate=sample_rate,
@@ -32,7 +33,7 @@ class ParallelClapFeatureExtractor:
             power=power,
             window_fn=window_fn,
             norm=norm,
-        )
+        ).to(device)
 
     def __call__(
         self,
@@ -82,6 +83,7 @@ class CLAPSimilarity:
             2.0,
             torch.hann_window,
             "slaney",
+            device=self.device,
         )
 
     def get_text_embedding(self, texts: List[str]) -> torch.Tensor:
@@ -92,7 +94,7 @@ class CLAPSimilarity:
             return_tensors="pt",
         )
 
-        return self.model.get_text_features(**features)
+        return self.model.get_text_features(**features).to(self.device)
 
     def _preprocess_audio(self, audio: np.ndarray) -> np.ndarray:
         audio = torch.from_numpy(audio).to(self.device, dtype=torch.float32)
