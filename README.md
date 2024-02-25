@@ -4,6 +4,8 @@ Evolutionary search over VSTi synthesiser parameters using CLAP embeddings as a 
 
 Root package is called `ohc`.
 
+cd into `one-hand-clapping` and run `pip install -e ".[dev]"` to install the package.
+
 ## Evolutionary Algorithm (Soumya)
 
 Directory: `ohc/search`

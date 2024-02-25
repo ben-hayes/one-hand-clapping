@@ -1,10 +1,50 @@
-from typing import List
+from typing import List, Callable
 
 import numpy as np
 import torch
 from transformers import AutoFeatureExtractor
 from transformers import AutoTokenizer
 from transformers import ClapModel
+from torchaudio.transforms import MelSpectrogram
+
+
+class ParallelClapFeatureExtractor:
+    def __init__(
+        self,
+        sample_rate: int = 48000,
+        n_fft: int = 2048,
+        hop_length: int = 512,
+        n_mels: int = 128,
+        f_min: int = 0,
+        f_max: int = 24000,
+        power: float = 2.0,
+        window_fn: Callable = torch.hann_window,
+        norm: str = "slaney",
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    ):
+        self.transform = MelSpectrogram(
+            sample_rate=sample_rate,
+            n_fft=n_fft,
+            win_length=n_fft,
+            hop_length=hop_length,
+            f_min=f_min,
+            f_max=f_max,
+            n_mels=n_mels,
+            power=power,
+            window_fn=window_fn,
+            norm=norm,
+        ).to(device)
+
+    def __call__(
+        self,
+        raw_speech: torch.Tensor,
+    ):
+        input_mel = self.transform(raw_speech).transpose(-1, -2).unsqueeze(1)
+        is_longer = [False] * input_mel.shape[0]
+
+        input_features = {"input_features": input_mel, "is_longer": is_longer}
+
+        return input_features
 
 
 class CLAPSimilarity:
@@ -31,7 +71,20 @@ class CLAPSimilarity:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
         print(f"Initializing CLAP feature extractor: {model_name}")
-        self.feature_extractor = AutoFeatureExtractor.from_pretrained(model_name)
+        fe = AutoFeatureExtractor.from_pretrained(model_name)
+
+        self.feature_extractor = ParallelClapFeatureExtractor(
+            fe.sampling_rate,
+            fe.fft_window_size,
+            fe.hop_length,
+            fe.feature_size,
+            fe.frequency_min,
+            fe.frequency_max,
+            2.0,
+            torch.hann_window,
+            "slaney",
+            device=self.device,
+        )
 
     def get_text_embedding(self, texts: List[str]) -> torch.Tensor:
         features = self.tokenizer(
@@ -40,20 +93,13 @@ class CLAPSimilarity:
             truncation=True,
             return_tensors="pt",
         )
+        features = {k: v.to(self.device) for k, v in features.items()}
 
         return self.model.get_text_features(**features)
 
     def _preprocess_audio(self, audio: np.ndarray) -> np.ndarray:
-        if audio.ndim > 1:
-            audio = [audio[i] for i in range(audio.shape[0])]
-        else:
-            audio = [audio]
-
-        return self.feature_extractor(
-            audio,
-            return_tensors="pt",
-            sampling_rate=self.sample_rate,
-        )
+        audio = torch.from_numpy(audio).to(self.device, dtype=torch.float32)
+        return self.feature_extractor(audio)
 
     def get_audio_embedding(self, audio: np.ndarray) -> torch.Tensor:
         audio_features = self._preprocess_audio(audio)
@@ -90,7 +136,7 @@ def test_clap():
         ],
     )
 
-    fake_audios = np.random.normal(0, 1, (10, 100))
+    fake_audios = np.random.normal(0, 1, (10, 10000))
     similarity = clap.compute_similarity(fake_audios, targets)
 
     print(similarity.shape)  # (5, 10)
