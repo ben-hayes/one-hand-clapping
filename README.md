@@ -90,3 +90,10 @@ Should allow:
 - visualisation of best output, output generation, (and algorithm history? i.e. intermediate results)
 
 Should use entry point defined in `ohc/run.py` (`from ohc import run`).
+
+## Experimental Visualizer
+
+Visualization of text prompt fitness scores from a multi-objective genetic algorithm
+have been explored in an experimental branch `exp/viz`.
+
+The visualizer is a Django webapp that is available at this repo/branch: https://github.com/jorshi/synth-explorer/tree/oneclap
