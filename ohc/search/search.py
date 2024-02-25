@@ -1,12 +1,12 @@
+import time
+
 import evotorch
-import torch
-#import wandb
-from evotorch.logging import StdOutLogger, Logger
 import matplotlib
 import matplotlib.pyplot as plt
-import time
-import numpy as np
-from sklearn.manifold import TSNE
+import torch
+from evotorch.logging import Logger
+
+# import wandb
 
 matplotlib.use("TkAgg")
 plt.ion()
@@ -24,7 +24,6 @@ class MetricsLivePlotter(Logger):
         # Create a figure and axis
         self._fig = plt.figure(figsize=(10, 4), dpi=80)
 
-
         self._ax = self._fig.add_subplot(111)
 
         # Set the labels of the x and y axis
@@ -39,7 +38,7 @@ class MetricsLivePlotter(Logger):
 
         self._iter_hist = []
         self._status_hist = []
-    
+
     def _log(self, status: dict):
         # Update the histories of the status
         self._iter_hist.append(status["iter"])
@@ -59,77 +58,63 @@ class MetricsLivePlotter(Logger):
 
         # Sleeping here will make the updates easier to watch
         time.sleep(0.05)
-        #dict_keys(['center', 'stdev', 'mean_eval', 'pop_best', 'median_eval', 'pop_best_eval', 'iter', 'best', 'worst', 'best_eval', 'worst_eval'])
-        #show the figure after the last iteration
         if status["iter"] == self.max_generations:
             plt.show()
             plt.pause(5)
 
 
-
-       
-
-
-
 class FindMySound(evotorch.Problem):
-    def __init__(self, 
-                 objective_sense: str,
-                 num_params: int, 
-                 min_value: float, 
-                 max_value: float, 
-                 fitness_function: torch.nn.Module, 
-                 batch_size: int = 1
+    def __init__(
+        self,
+        objective_sense: str,
+        num_params: int,
+        min_value: float,
+        max_value: float,
+        fitness_function: torch.nn.Module,
     ):
-        '''       
+        """
         Args:
-            objective_sense (str): The objective sense of the problem, either "max" or "min"
-            num_params (int): The number of parameters in the solution; in our case, the number of paramters in the VST
+            objective_sense (str): The objective sense of the problem, either
+                "max" or "min"
+            num_params (int): The number of parameters in the solution; in our case,
+                the number of paramters in the VST
             min_value (float): The minimum value of each parameter
             max_value (float): The maximum value of each parameter
-            fitness_function (torch.nn.Module): The fitness function to be used for optimisation
+            fitness_function (torch.nn.Module): The fitness function to be used for
+                optimisation
             batch_size (int): The batch size for the fitness function
-        '''
+        """
         super().__init__(
-            objective_sense="max",
-            solution_length = num_params,
+            objective_sense=objective_sense,
+            solution_length=num_params,
             initial_bounds=(min_value, max_value),
         )
         self.fitness_fn = fitness_function
-        self._batch_size = batch_size
 
     def fitness_function(self, params_tensor: torch.Tensor):
         return self.fitness_fn.compute(params_tensor)
 
     def _evaluate_batch(self, solutions: evotorch.SolutionBatch):
-        
-        batched_solutions = solutions.values.split(self._batch_size)
-  
-        
-        batched_fitness = []
-        for batch in batched_solutions:
-            
-            fitness = self.fitness_function(batch)
-            batched_fitness.append(fitness)
-        fitness = torch.cat(batched_fitness)
+        fitness = self.fitness_function(solutions)
         solutions.set_evals(fitness)
         return solutions
 
-#build a live custom logger that plots the population in real time. You can use dimensionality reduction to plot the population in 3D
+
+# build a live custom logger that plots the population in real time. You can use
+# dimensionality reduction to plot the population in 3D
 
 
-
-class EvolutionarySearch():
-    def __init__(self,
-                problem: evotorch.Problem,
-                logger: str = "StdOutLogger",
-                searcher: str = "SNES" ,
-                population_size: int = 10,
-                max_generations: int = 10,
-                initial_solution_path=None,
-                batch_size: int = 2,
-                stdev_init: float = 0,
-                ):
-        '''
+class EvolutionarySearch:
+    def __init__(
+        self,
+        problem: evotorch.Problem,
+        logger: str = "StdOutLogger",
+        searcher: str = "SNES",
+        population_size: int = 10,
+        max_generations: int = 10,
+        stdev_init: float = 1.0,
+    ):
+        """
         Args:
             problem (evotorch.Problem): The problem to be solved
             logger (str): The logger to be used
@@ -139,67 +124,70 @@ class EvolutionarySearch():
             initial_solution_path (str): The path to the initial solution
             batch_size (int): The batch size for the fitness function
             stdev_init (float): The initial standard deviation for the SNES algorithm
-            objective_sense (str): The objective sense of the problem, either "max" or "min"
-        '''
-  
+            objective_sense (str): The objective sense of the problem,
+                either "max" or "min"
+        """
+
         self._problem = problem
         if searcher == "SNES":
-            self._searcher = evotorch.algorithms.SNES(self._problem, stdev_init=stdev_init, popsize = population_size)
-       
+            self._searcher = evotorch.algorithms.SNES(
+                self._problem, stdev_init=stdev_init, popsize=population_size
+            )
+
         # self._population_size = population_size
         self._max_generations = max_generations
-  
+
         if logger == "StdOutLogger":
             self._logger = evotorch.logging.StdOutLogger(self._searcher)
         elif logger == "WandbLogger":
-            self._logger = evotorch.logging.WandbLogger(self._searcher, project="one-hand-clapping", entity="ohc")
+            self._logger = evotorch.logging.WandbLogger(
+                self._searcher, project="one-hand-clapping", entity="ohc"
+            )
         elif logger == "custom":
-            self._logger = MetricsLivePlotter(self._searcher, "best_eval", max_generations)
-            #self._logger = PopulationLivePlotter(self._searcher)
+            self._logger = MetricsLivePlotter(
+                self._searcher, "best_eval", max_generations
+            )
+            # self._logger = PopulationLivePlotter(self._searcher)
         else:
             raise ValueError("Logger not recognised")
-        
-        
 
-    def forward(self):
-      
+    def run(self):
         self._searcher.run(self._max_generations)
         # for _ in range(self._max_generations):
         #     self._searcher.step()
         #     status = self._searcher.status
-        #     #print(status)
+        #     print(status)
         #     population = self._searcher._population.access_values(keep_evals=True)
-        #     #print(population)
-    
+        #     print(population)
 
-        
+
 class fitnessfunction(torch.nn.Module):
     def __init__(self):
         pass
 
     def compute(self, params_tensor: torch.Tensor):
-        return params_tensor.mean(dim = 1)
+        return params_tensor.mean(dim=1)
 
-        
+
 if __name__ == "__main__":
+    problem = FindMySound(
+        objective_sense="min",
+        num_params=2,
+        min_value=0,
+        max_value=1,
+        fitness_function=fitnessfunction(),
+    )
 
-    problem = FindMySound(objective_sense="min", 
-                          num_params=2, 
-                          min_value=0, 
-                          max_value=1, 
-                          fitness_function=fitnessfunction())
-
-
-    search = EvolutionarySearch(problem = problem, 
-                                logger = "StdOutLogger",
-                                searcher = "SNES",
-                                population_size = 100,
-                                max_generations = 100,
-                                initial_solution_path = None,
-                                batch_size = 2,
-                                stdev_init = 0.1,
-                               )
+    search = EvolutionarySearch(
+        problem=problem,
+        logger="StdOutLogger",
+        searcher="SNES",
+        population_size=100,
+        max_generations=100,
+        initial_solution_path=None,
+        batch_size=2,
+        stdev_init=0.1,
+    )
     search.forward()
-     
 
     # print("Search complete")

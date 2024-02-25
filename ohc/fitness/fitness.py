@@ -132,6 +132,7 @@ class FitnessFunction:
 
     @vectorized
     def compute(self, batch: evotorch.SolutionBatch) -> torch.Tensor:
+        batch = batch.values
         if batch.ndim == 1:
             batch = batch.unsqueeze(0)
         elif batch.ndim != 2:
@@ -151,8 +152,6 @@ class FitnessFunction:
         indices = torch.cat(indices, dim=0)
         similarities = torch.cat(similarities, dim=0)
         similarities = similarities[indices.argsort()]
-        # similarities = torch.split(similarities, 1, dim=1)
-        # similarities = (s.squeeze(1) for s in similarities)
         return similarities
 
 
