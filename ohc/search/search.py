@@ -8,8 +8,8 @@ from evotorch.logging import Logger
 
 # import wandb
 
-matplotlib.use("TkAgg")
-plt.ion()
+# matplotlib.use("TkAgg")
+# plt.ion()
 
 
 class MetricsLivePlotter(Logger):
