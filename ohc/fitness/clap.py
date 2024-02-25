@@ -40,7 +40,7 @@ class CLAPSimilarity:
             truncation=True,
             return_tensors="pt",
         )
-
+        features = {k: v.to(self.device) for k, v in features.items()}
         return self.model.get_text_features(**features)
 
     def _preprocess_audio(self, audio: np.ndarray) -> np.ndarray:
@@ -57,6 +57,7 @@ class CLAPSimilarity:
 
     def get_audio_embedding(self, audio: np.ndarray) -> torch.Tensor:
         audio_features = self._preprocess_audio(audio)
+        audio_features = {k: v.to(self.device) for k, v in audio_features.items()}
         return self.model.get_audio_features(**audio_features)
 
     def compute_similarity(
