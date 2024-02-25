@@ -71,6 +71,7 @@ class FindMySound(evotorch.Problem):
         min_value: float,
         max_value: float,
         fitness_function: torch.nn.Module,
+        device: str = "cpu",
     ):
         """
         Args:
@@ -88,6 +89,7 @@ class FindMySound(evotorch.Problem):
             objective_sense=objective_sense,
             solution_length=num_params,
             initial_bounds=(min_value, max_value),
+            device=device,
         )
         self.fitness_fn = fitness_function
 
@@ -161,33 +163,6 @@ class EvolutionarySearch:
         #     print(population)
 
 
-class fitnessfunction(torch.nn.Module):
-    def __init__(self):
-        pass
 
-    def compute(self, params_tensor: torch.Tensor):
-        return params_tensor.mean(dim=1)
-
-
-if __name__ == "__main__":
-    problem = FindMySound(
-        objective_sense="min",
-        num_params=2,
-        min_value=0,
-        max_value=1,
-        fitness_function=fitnessfunction(),
-    )
-
-    search = EvolutionarySearch(
-        problem=problem,
-        logger="StdOutLogger",
-        searcher="SNES",
-        population_size=100,
-        max_generations=100,
-        initial_solution_path=None,
-        batch_size=2,
-        stdev_init=0.1,
-    )
-    search.forward()
 
     # print("Search complete")
