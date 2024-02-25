@@ -132,7 +132,9 @@ class FitnessFunction:
 
     @vectorized
     def compute(self, batch: evotorch.SolutionBatch) -> torch.Tensor:
-        batch = batch.values
+        if isinstance(batch, evotorch.SolutionBatch):
+            batch = batch.values
+
         if batch.ndim == 1:
             batch = batch.unsqueeze(0)
         elif batch.ndim != 2:
